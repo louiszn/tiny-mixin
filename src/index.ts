@@ -63,6 +63,9 @@ export type ApplyMixins<TBase extends ConstructorLike, TMixins extends Mixin[]> 
 		: TBase
 	: TBase;
 
+const MIXINS_SYMBOL = Symbol("mixins");
+const EMPTY_SET: ReadonlySet<Mixin> = new Set();
+
 const mixinCache = new WeakMap<ConstructorLike, WeakMap<Mixin, ConstructorLike>>();
 
 /**
@@ -109,6 +112,10 @@ export function applyMixins<TBase extends ConstructorLike, const TMixins extends
 	let currentBase: ConstructorLike = base;
 
 	for (const mixin of mixins) {
+		if (hasMixin(currentBase, mixin)) {
+			continue;
+		}
+
 		let appliedMixins = mixinCache.get(currentBase);
 
 		if (!appliedMixins) {
@@ -121,10 +128,62 @@ export function applyMixins<TBase extends ConstructorLike, const TMixins extends
 		if (!mixinConstructor) {
 			mixinConstructor = mixin(currentBase);
 			appliedMixins.set(mixin, mixinConstructor);
+
+			const parentSet = getMixins(currentBase);
+			const newSet = new Set(parentSet);
+
+			newSet.add(mixin);
+			freezeSet(newSet);
+
+			Object.defineProperty(mixinConstructor, MIXINS_SYMBOL, {
+				value: newSet,
+				enumerable: false,
+				configurable: false,
+				writable: false,
+			});
 		}
 
 		currentBase = mixinConstructor;
 	}
 
 	return currentBase as ApplyMixins<TBase, TMixins>;
+}
+
+/**
+ * Gets the set of mixins applied to a base constructor.
+ *
+ * @template TBase - The base constructor.
+ *
+ * @param base - The base constructor.
+ * @returns The set of mixins.
+ */
+export function getMixins(base: ConstructorLike): ReadonlySet<Mixin> {
+	return (base as any)[MIXINS_SYMBOL] ?? EMPTY_SET;
+}
+/**
+ * Checks if a mixin has been applied to a base constructor.
+ *
+ * @param base - The base constructor.
+ * @param mixin - The mixin function.
+ * @returns `true` if the mixin has been applied, `false` otherwise.
+ */
+export function hasMixin<TBase extends ConstructorLike, TMixin extends Mixin>(
+	base: TBase,
+	mixin: TMixin,
+): base is ApplyMixins<TBase, [TMixin]> {
+	return getMixins(base).has(mixin);
+}
+
+function freezeSet<T>(set: Set<T>): ReadonlySet<T> {
+	const anySet = set as any;
+
+	anySet.add = () => {
+		throw new Error("Set is frozen");
+	};
+
+	anySet.delete = () => {
+		throw new Error("Set is frozen");
+	};
+
+	return Object.freeze(set);
 }
