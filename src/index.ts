@@ -112,7 +112,7 @@ export function applyMixins<TBase extends ConstructorLike, const TMixins extends
 		let appliedMixins = mixinCache.get(currentBase);
 
 		if (!appliedMixins) {
-			appliedMixins = new Map();
+			appliedMixins = new WeakMap();
 			mixinCache.set(currentBase, appliedMixins);
 		}
 
