@@ -1,4 +1,4 @@
-import { defineConfig } from "tsup";
+import { defineConfig } from "tsdown";
 
 export default defineConfig({
 	entry: ["src/index.ts"],
@@ -7,5 +7,4 @@ export default defineConfig({
 	format: ["esm", "cjs"],
 	clean: true,
 	dts: true,
-	minifySyntax: true,
 });

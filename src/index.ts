@@ -4,6 +4,7 @@
  * @template T - The instance type produced by the constructor.
  * @template Args - The argument tuple accepted by the constructor.
  */
+// biome-ignore lint/suspicious/noExplicitAny: Accept various of types
 export type Constructor<T = any, Args extends any[] = any[]> = new (...args: Args) => T;
 
 /**
@@ -12,9 +13,8 @@ export type Constructor<T = any, Args extends any[] = any[]> = new (...args: Arg
  * @template T - The instance type produced by the constructor.
  * @template Args - The argument tuple accepted by the constructor.
  */
-export type AbstractConstructor<T = any, Args extends any[] = any[]> = abstract new (
-	...args: Args
-) => T;
+// biome-ignore lint/suspicious/noExplicitAny: Accept various of types
+export type AbstractConstructor<T = any, Args extends any[] = any[]> = abstract new (...args: Args) => T;
 
 /**
  * Represents a constructor, either a regular or abstract constructor.
@@ -22,6 +22,7 @@ export type AbstractConstructor<T = any, Args extends any[] = any[]> = abstract 
  * @template T - The instance type produced by the constructor.
  * @template Args - The argument tuple accepted by the constructor.
  */
+// biome-ignore lint/suspicious/noExplicitAny: Accept various of types
 export type ConstructorLike<T = any, Args extends any[] = any[]> =
 	| Constructor<T, Args>
 	| AbstractConstructor<T, Args>;
@@ -36,10 +37,9 @@ export type ConstructorLike<T = any, Args extends any[] = any[]> =
  * @template TBase - The base constructor type the mixin can extend.
  * @template TResult - The resulting constructor type.
  */
-export type Mixin<
-	TBase extends ConstructorLike = ConstructorLike,
-	TResult extends TBase = TBase,
-> = (base: TBase) => TResult;
+export type Mixin<TBase extends ConstructorLike = ConstructorLike, TResult extends TBase = TBase> = (
+	base: TBase,
+) => TResult;
 
 /**
  * Recursively applies a tuple of mixins at the type level.
@@ -52,6 +52,7 @@ export type Mixin<
  * @template TBase - The initial base constructor.
  * @template TMixins - A tuple of mixin functions.
  */
+// biome-ignore-start lint/suspicious/noExplicitAny: Accept various of types
 export type ApplyMixins<TBase extends ConstructorLike, TMixins extends Mixin[]> = TMixins extends [
 	infer First,
 	...infer Rest,
@@ -62,6 +63,7 @@ export type ApplyMixins<TBase extends ConstructorLike, TMixins extends Mixin[]> 
 			: TBase
 		: TBase
 	: TBase;
+// biome-ignore-end lint/suspicious/noExplicitAny: Accept various of types
 
 const MIXINS_SYMBOL = Symbol("mixins");
 const EMPTY_SET: ReadonlySet<Mixin> = new Set();
@@ -158,6 +160,7 @@ export function applyMixins<TBase extends ConstructorLike, const TMixins extends
  * @returns The set of mixins.
  */
 export function getMixins(base: ConstructorLike): ReadonlySet<Mixin> {
+	// biome-ignore lint/suspicious/noExplicitAny: Internal symbol field access
 	return (base as any)[MIXINS_SYMBOL] ?? EMPTY_SET;
 }
 /**
@@ -175,15 +178,16 @@ export function hasMixin<TBase extends ConstructorLike, TMixin extends Mixin>(
 }
 
 function freezeSet<T>(set: Set<T>): ReadonlySet<T> {
+	// biome-ignore lint/suspicious/noExplicitAny: Bypass types to enforce the methods
 	const anySet = set as any;
 
-	anySet.add = () => {
+	const fn = () => {
 		throw new Error("Set is frozen");
 	};
 
-	anySet.delete = () => {
-		throw new Error("Set is frozen");
-	};
+	anySet.add = fn;
+	anySet.delete = fn;
+	anySet.clear = fn;
 
 	return Object.freeze(set);
 }

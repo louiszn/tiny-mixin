@@ -1,5 +1,11 @@
 # tiny-mixin
 
+## 1.1.2
+
+### Patch Changes
+
+- Migrated to bun stack
+
 ## 1.1.0
 
 ### Minor Changes

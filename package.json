@@ -1,6 +1,6 @@
 {
 	"name": "tiny-mixin",
-	"version": "1.1.1",
+	"version": "1.1.2",
 	"description": "A lightweight TypeScript-first class mixin utility",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -18,9 +18,8 @@
 		}
 	},
 	"scripts": {
-		"build": "tsup",
-		"format:write": "prettier --write .",
-		"format:check": "prettier --check ."
+		"build": "tsdown",
+		"check": "bunx --bun @biomejs/biome check --write"
 	},
 	"keywords": [
 		"class",
@@ -45,11 +44,12 @@
 	"license": "MIT",
 	"packageManager": "pnpm@10.28.2",
 	"devDependencies": {
+		"@biomejs/biome": "2.5.2",
 		"@changesets/cli": "^2.29.8",
+		"@types/bun": "latest",
 		"@types/node": "^25.2.3",
-		"prettier": "^3.8.1",
-		"tsup": "^8.5.1",
-		"tsx": "^4.21.0",
-		"typescript": "^5.9.3"
-	}
+		"tsdown": "^0.22.3",
+		"typescript": "^6.0.3"
+	},
+	"private": true
 }
