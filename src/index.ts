@@ -48,7 +48,7 @@ export type Mixin<TBase extends ConstructorLike = ConstructorLike, TResult exten
  * mixins without requiring each mixin to accept every ConstructorLike.
  */
 // biome-ignore lint/suspicious/noExplicitAny: Accept various mixin signatures
-type AnyMixin = Mixin<any, ConstructorLike>;
+export type AnyMixin = Mixin<any, ConstructorLike>;
 
 /**
  * Recursively applies a tuple of mixins at the type level.
@@ -65,12 +65,8 @@ type AnyMixin = Mixin<any, ConstructorLike>;
 export type ApplyMixins<
 	TBase extends ConstructorLike,
 	TMixins extends readonly AnyMixin[],
-> = TMixins extends readonly [infer First, ...infer Rest]
-	? First extends Mixin<any, any>
-		? Rest extends readonly AnyMixin[]
-			? TBase & ApplyMixins<ReturnType<First>, Rest>
-			: TBase
-		: TBase
+> = TMixins extends readonly [infer First extends AnyMixin, ...infer Rest extends readonly AnyMixin[]]
+	? TBase & ApplyMixins<ReturnType<First>, Rest>
 	: TBase;
 // biome-ignore-end lint/suspicious/noExplicitAny: Accept various types
 
@@ -92,9 +88,7 @@ const mixinCache = new WeakMap<ConstructorLike, WeakMap<AnyMixin, ConstructorLik
  * @param mixin - The mixin function.
  * @returns The same mixin function, with preserved generics.
  */
-export function createMixin<TBase extends ConstructorLike, TResult extends TBase>(
-	mixin: Mixin<TBase, TResult>,
-): Mixin<TBase, TResult> {
+export function createMixin<const TMixin extends AnyMixin>(mixin: TMixin): TMixin {
 	return mixin;
 }
 
