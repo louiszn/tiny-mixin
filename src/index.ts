@@ -14,7 +14,9 @@ export type Constructor<T = any, Args extends any[] = any[]> = new (...args: Arg
  * @typeParam T - The instance type represented by the constructor.
  * @typeParam Args - The constructor parameter tuple.
  */
-export type AbstractConstructor<T = any, Args extends any[] = any[]> = abstract new (...args: Args) => T;
+export type AbstractConstructor<T = any, Args extends any[] = any[]> = abstract new (
+	...args: Args
+) => T;
 
 /**
  * A constructor that may represent either a concrete or abstract class.
@@ -25,13 +27,6 @@ export type AbstractConstructor<T = any, Args extends any[] = any[]> = abstract 
 export type ConstructorLike<T = any, Args extends any[] = any[]> =
 	| Constructor<T, Args>
 	| AbstractConstructor<T, Args>;
-
-/**
- * A generic mixin factory.
- *
- * A mixin receives a base constructor and returns a derived constructor.
- */
-export type AnyMixin = (base: any) => ConstructorLike;
 
 /**
  * A mixin factory that transforms one constructor into another.
@@ -45,26 +40,26 @@ export type Mixin<
 > = (base: TBase) => TResult;
 
 /**
- * Extracts the instance type produced by a mixin.
+ * Represents any mixin factory.
  *
- * @typeParam TMixin - The mixin to inspect.
+ * `any` is intentionally used for the base parameter so mixins with narrower
+ * constructor constraints remain assignable to this common heterogeneous type.
  */
-type MixinInstance<TMixin extends AnyMixin> = InstanceType<ReturnType<TMixin>>;
+export type AnyMixin = (base: any) => ConstructorLike;
 
 /**
- * Extracts the public members added by a mixin.
+ * Extracts the static members of a constructor without preserving its
+ * construct signature or prototype property.
  *
- * Members already present on the base instance are excluded. Private,
- * protected, and ECMAScript private members are naturally omitted because
- * they are not exposed through `keyof`.
+ * This allows the constructor to be rebuilt with a different instance type
+ * without introducing multiple construct signatures with different return
+ * types.
  *
- * @typeParam TBase - The base constructor.
- * @typeParam TMixin - The applied mixin.
+ * @typeParam TBase - The constructor whose static members should be preserved.
  */
-type MixinMembers<TBase extends ConstructorLike, TMixin extends AnyMixin> = Pick<
-	MixinInstance<TMixin>,
-	Exclude<keyof MixinInstance<TMixin>, keyof InstanceType<TBase>>
->;
+type StaticMembers<TBase extends ConstructorLike> = {
+	[K in keyof TBase as K extends "prototype" ? never : K]: TBase[K];
+};
 
 /**
  * Reconstructs a constructor with a different instance type while preserving
@@ -81,19 +76,36 @@ type RebindConstructor<TBase extends ConstructorLike, TInstance> =
 			: never;
 
 /**
- * Extracts the static members of a constructor without preserving its
- * construct signature or prototype.
+ * Extracts the instance type produced by a mixin.
+ *
+ * @typeParam TMixin - The mixin whose result should be inspected.
  */
-type StaticMembers<TBase extends ConstructorLike> = {
-	[K in keyof TBase as K extends "prototype" ? never : K]: TBase[K];
-};
+type MixinInstance<TMixin extends AnyMixin> = InstanceType<ReturnType<TMixin>>;
+
+/**
+ * Extracts the public members introduced by a mixin.
+ *
+ * Members already present on the base instance are excluded. Private,
+ * protected, and ECMAScript private members are naturally omitted because
+ * they are not exposed through `keyof`.
+ *
+ * @typeParam TBase - The base constructor.
+ * @typeParam TMixin - The applied mixin.
+ */
+type MixinMembers<TBase extends ConstructorLike, TMixin extends AnyMixin> = Pick<
+	MixinInstance<TMixin>,
+	Exclude<keyof MixinInstance<TMixin>, keyof InstanceType<TBase>>
+>;
 
 /**
  * Computes the constructor type produced by applying a single mixin.
  *
- * Static members from the base constructor are preserved without retaining
- * the original construct signature, ensuring the resulting constructor has
- * a single consistent instance type.
+ * The resulting constructor preserves the constructor parameters and static
+ * members of the base while extending its instance type with only the public
+ * members introduced by the mixin.
+ *
+ * @typeParam TBase - The base constructor.
+ * @typeParam TMixin - The mixin to apply.
  */
 type ApplyMixin<TBase extends ConstructorLike, TMixin extends AnyMixin> = StaticMembers<TBase> &
 	RebindConstructor<TBase, InstanceType<TBase> & MixinMembers<TBase, TMixin>>;
@@ -102,22 +114,46 @@ type ApplyMixin<TBase extends ConstructorLike, TMixin extends AnyMixin> = Static
  * Computes the constructor type produced by applying a sequence of mixins
  * from left to right.
  *
+ * Applying `[A, B]` is equivalent to:
+ *
+ * ```ts
+ * B(A(Base))
+ * ```
+ *
  * @typeParam TBase - The initial base constructor.
- * @typeParam TMixins - The mixins to apply.
+ * @typeParam TMixins - The tuple of mixins to apply.
  */
 export type ApplyMixins<
 	TBase extends ConstructorLike,
 	TMixins extends readonly AnyMixin[],
-> = TMixins extends readonly [infer First extends AnyMixin, ...infer Rest extends readonly AnyMixin[]]
+> = TMixins extends readonly [
+	infer First extends AnyMixin,
+	...infer Rest extends readonly AnyMixin[],
+]
 	? ApplyMixins<ApplyMixin<TBase, First>, Rest>
 	: TBase;
 
+/**
+ * Runtime metadata key containing the mixins applied to a constructor.
+ */
 const MIXINS_SYMBOL = Symbol("tiny-mixin:mixins");
 
+/**
+ * Shared empty set returned for constructors without any applied mixins.
+ */
 const EMPTY_SET: ReadonlySet<AnyMixin> = new Set();
 
+/**
+ * Caches generated constructors by base constructor and mixin.
+ *
+ * This ensures that applying the same mixin to the same base constructor
+ * reuses the previously generated constructor.
+ */
 const mixinCache = new WeakMap<ConstructorLike, WeakMap<AnyMixin, ConstructorLike>>();
 
+/**
+ * Runtime metadata stored on constructors produced by `applyMixins`.
+ */
 interface MixinMetadata {
 	readonly [MIXINS_SYMBOL]?: ReadonlySet<AnyMixin>;
 }
@@ -125,9 +161,9 @@ interface MixinMetadata {
 /**
  * Creates a mixin while preserving its exact inferred function type.
  *
- * This helper has no runtime behavior beyond returning the provided mixin.
- * It provides a clear declaration point while retaining the mixin's generic
- * constraints and inferred return type.
+ * The provided function is returned unchanged at both runtime and type level.
+ * This preserves generic base constraints and the exact constructor type
+ * inferred from the mixin implementation.
  *
  * @param mixin - The mixin factory to create.
  * @returns The same mixin factory.
@@ -145,21 +181,28 @@ export function createMixin<const TMixin extends AnyMixin>(mixin: TMixin): TMixi
  * B(A(Base))
  * ```
  *
- * Generated constructors are cached by their base constructor and mixin.
- * Applying the same mixin to the same constructor therefore reuses the
- * previously generated constructor.
+ * Mixins already present in the constructor hierarchy are skipped. Generated
+ * constructors are cached, so applying the same mixin to the same constructor
+ * reuses the previously generated constructor.
+ *
+ * At the type level, only the public members introduced by each mixin are
+ * exposed through the resulting constructor.
  *
  * @param base - The initial base constructor.
  * @param mixins - The mixins to apply.
- * @returns The constructor produced by applying all mixins.
+ * @returns The constructor produced by applying all requested mixins.
  */
-export function applyMixins<TBase extends ConstructorLike, const TMixins extends readonly AnyMixin[]>(
-	base: TBase,
-	mixins: TMixins,
-): ApplyMixins<TBase, TMixins> {
+export function applyMixins<
+	TBase extends ConstructorLike,
+	const TMixins extends readonly AnyMixin[],
+>(base: TBase, mixins: TMixins): ApplyMixins<TBase, TMixins> {
 	let current: ConstructorLike = base;
 
 	for (const mixin of mixins) {
+		if (hasMixin(current, mixin)) {
+			continue;
+		}
+
 		let cache = mixinCache.get(current);
 
 		if (!cache) {
@@ -192,24 +235,26 @@ export function applyMixins<TBase extends ConstructorLike, const TMixins extends
 }
 
 /**
- * Returns all mixins applied to a constructor.
+ * Returns all mixins that have been applied to a constructor.
  *
- * The returned set also includes mixins inherited through previously composed
+ * The returned set also contains mixins inherited through previously composed
  * constructors.
  *
  * @param target - The constructor to inspect.
- * @returns A read-only set containing the applied mixins.
+ * @returns A read-only set containing all applied mixins.
  */
 export function getMixins(target: ConstructorLike): ReadonlySet<AnyMixin> {
 	return (target as ConstructorLike & MixinMetadata)[MIXINS_SYMBOL] ?? EMPTY_SET;
 }
 
 /**
- * Checks whether a mixin has been applied to a constructor.
+ * Checks whether a mixin has already been applied to a constructor.
+ *
+ * Mixins inherited through the constructor hierarchy are also considered.
  *
  * @param target - The constructor to inspect.
  * @param mixin - The mixin to look for.
- * @returns Whether the mixin has been applied.
+ * @returns Whether the specified mixin has been applied.
  */
 export function hasMixin<TMixin extends AnyMixin>(target: ConstructorLike, mixin: TMixin): boolean {
 	return getMixins(target).has(mixin);

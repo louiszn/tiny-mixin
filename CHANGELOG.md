@@ -1,5 +1,11 @@
 # tiny-mixin
 
+## 1.2.2
+
+### Patch Changes
+
+- Fixed generated mixin types leaking private and protected members
+
 ## 1.2.1
 
 ### Patch Changes
