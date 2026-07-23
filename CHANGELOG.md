@@ -1,5 +1,11 @@
 # tiny-mixin
 
+## 1.1.6
+
+### Patch Changes
+
+- Fix build cache
+
 ## 1.1.5
 
 ### Patch Changes
