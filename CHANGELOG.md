@@ -1,5 +1,11 @@
 # tiny-mixin
 
+## 1.2.0
+
+### Minor Changes
+
+- Fixed generated mixin types leaking private and protected members into declaration files, while preserving public mixin members and base class statics
+
 ## 1.1.6
 
 ### Patch Changes
