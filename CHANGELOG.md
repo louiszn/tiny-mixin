@@ -1,5 +1,12 @@
 # tiny-mixin
 
+## 1.1.3
+
+### Patch Changes
+
+- 3899f0c: Updated tsdown build
+  Updated package.json information
+
 ## 1.1.2
 
 ### Patch Changes
